@@ -238,8 +238,9 @@ async def get_request_detail(request_id: int, req: Request):
     conn.close()
     return {"request": request_data, "history": history, "comments": comments, "statuses": statuses, "executors": executors}
 
+# ИСПРАВЛЕНО: параметр req первым, note со значением по умолчанию - последний
 @app.patch("/api/requests/{request_id}/status")
-async def change_status(request_id: int, new_status_id: int, note: str = "", req: Request):
+async def change_status(request_id: int, new_status_id: int, req: Request, note: str = ""):
     user = await get_current_user(req)
     if not user:
         raise HTTPException(status_code=401)
