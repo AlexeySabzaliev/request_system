@@ -3,26 +3,26 @@ from psycopg2.extras import RealDictCursor
 import bcrypt
 import os
 
-# ========== НАСТРОЙКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ ==========
-# Если используется Render.com (переменная окружения DATABASE_URL)
-if os.environ.get("DATABASE_URL"):
-    DATABASE_URL = os.environ.get("DATABASE_URL")
-    def get_db_connection():
-        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-# Для локального запуска на Windows
-else:
-    DB_CONFIG = {
-        "dbname": "request_system",
-        "user": "postgres",
-        "password": "root",  # ← ИЗМЕНИТЕ НА ВАШ ПАРОЛЬ
-        "host": "localhost",
-        "port": "5432"
-    }
-    
-    def get_db_connection():
+# ========== КОНФИГУРАЦИЯ ДЛЯ ЛОКАЛЬНОГО ЗАПУСКА (WINDOWS) ==========
+DB_CONFIG = {
+    "dbname": "request_system",
+    "user": "postgres",
+    "password": "root",  # ← ИЗМЕНИТЕ НА ВАШ ПАРОЛЬ ОТ POSTGRESQL
+    "host": "localhost",
+    "port": "5432"
+}
+
+def get_db_connection():
+    """Создает соединение с базой данных PostgreSQL"""
+    # Если используется Render.com (переменная окружения DATABASE_URL)
+    if os.environ.get("DATABASE_URL"):
+        return psycopg2.connect(os.environ.get("DATABASE_URL"), cursor_factory=RealDictCursor)
+    # Для локального запуска на Windows
+    else:
         return psycopg2.connect(**DB_CONFIG, cursor_factory=RealDictCursor)
 
 def init_db():
+    """Инициализация базы данных: создание таблиц и заполнение тестовыми данными"""
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -96,15 +96,16 @@ def init_db():
         );
     """)
 
-    # Заполнение начальными данными
+    # Заполнение начальными данными, если таблицы пустые
     cur.execute("SELECT COUNT(*) FROM roles")
     if cur.fetchone()['count'] == 0:
+        print("📝 Заполнение справочников...")
         cur.execute("INSERT INTO roles (role_name) VALUES ('Заявитель'), ('Исполнитель'), ('Администратор')")
         cur.execute("INSERT INTO categories (category_name) VALUES ('IT'), ('Бухгалтерия'), ('Административное'), ('Другое')")
         cur.execute("INSERT INTO priorities (priority_name, response_hours) VALUES ('Низкий', 72), ('Средний', 24), ('Высокий', 4)")
         cur.execute("INSERT INTO statuses (status_name, is_closed, sort_order) VALUES ('Новая', FALSE, 1), ('В работе', FALSE, 2), ('На проверке', FALSE, 3), ('Выполнена', TRUE, 4)")
 
-        # Тестовые пользователи: пароль admin123
+        # Тестовые пользователи: все с паролем admin123
         hashed_pw = bcrypt.hashpw(b'admin123', bcrypt.gensalt()).decode('utf-8')
         cur.execute("""
             INSERT INTO users (full_name, email, password_hash, role_id) VALUES
@@ -112,11 +113,12 @@ def init_db():
             ('Иванов Иван', 'executor@test.com', %s, (SELECT role_id FROM roles WHERE role_name='Исполнитель')),
             ('Петров Петр', 'user@test.com', %s, (SELECT role_id FROM roles WHERE role_name='Заявитель'))
         """, (hashed_pw, hashed_pw, hashed_pw))
+        print("✅ Тестовые пользователи созданы (пароль: admin123)")
 
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ База данных успешно создана и заполнена!")
+    print("✅ База данных готова к работе!")
 
 if __name__ == "__main__":
     init_db()
