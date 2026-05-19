@@ -19,7 +19,8 @@ def test_import_database():
         import database
         assert hasattr(database, 'get_db_connection')
         assert hasattr(database, 'init_db')
-        print("✅ database.py импортирован успешно")
+        assert hasattr(database, 'DB_CONFIG')
+        print("✅ database.py импортирован успешно, DB_CONFIG найден")
     except Exception as e:
         pytest.fail(f"Ошибка импорта database.py: {e}")
 
@@ -65,22 +66,14 @@ def test_syntax_check():
     
     print("✅ Синтаксис всех файлов корректен")
 
-def test_db_config_exists():
-    """Тест: проверка наличия конфигурации БД"""
+def test_db_config_content():
+    """Тест: проверка содержимого DB_CONFIG"""
     import database
-    # Проверяем, что есть либо DB_CONFIG, либо DATABASE_URL
-    has_db_config = hasattr(database, 'DB_CONFIG')
-    has_db_url = hasattr(database, 'DATABASE_URL')
-    assert has_db_config or has_db_url, "Нет ни DB_CONFIG, ни DATABASE_URL"
-    
-    if has_db_config:
-        config = database.DB_CONFIG
-        required_keys = ['dbname', 'user', 'password', 'host', 'port']
-        for key in required_keys:
-            assert key in config, f"Отсутствует ключ {key} в DB_CONFIG"
-        print("✅ DB_CONFIG корректен")
-    else:
-        print("✅ Используется DATABASE_URL (для деплоя)")
+    config = database.DB_CONFIG
+    required_keys = ['dbname', 'user', 'password', 'host', 'port']
+    for key in required_keys:
+        assert key in config, f"Отсутствует ключ {key} в DB_CONFIG"
+    print("✅ DB_CONFIG содержит все необходимые ключи")
 
 if __name__ == "__main__":
     pytest.main(["-v"])
